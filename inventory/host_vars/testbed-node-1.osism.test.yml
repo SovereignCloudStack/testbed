@@ -46,7 +46,7 @@ network_interfaces:
     address: 192.168.16.11
     netmask: 255.255.240.0
     gateway: 192.168.16.1
-    mtu: 1450
+    mtu: 1472
     up:
       - ip route add 192.168.48.0/20 via 192.168.32.5
     down:
@@ -58,7 +58,7 @@ network_interfaces:
     method: static
     address: 192.168.32.11
     netmask: 255.255.240.0
-    mtu: 1450
+    mtu: 1472
 
   - device: "{{ ansible_local.testbed_network_devices.external }}"
     auto: true
@@ -66,13 +66,13 @@ network_interfaces:
     method: static
     address: 192.168.96.11
     netmask: 255.255.240.0
-    mtu: 1450
+    mtu: 1472
 
   - device: "{{ ansible_local.testbed_network_devices.provider }}"
     auto: true
     family: inet
     method: manual
-    mtu: 1450
+    mtu: 1472
 
   - device: "{{ ansible_local.testbed_network_devices.storage_frontend }}"
     auto: true
@@ -80,7 +80,7 @@ network_interfaces:
     method: static
     address: 192.168.64.11
     netmask: 255.255.240.0
-    mtu: 1450
+    mtu: 1472
 
   - device: "{{ ansible_local.testbed_network_devices.storage_backend }}"
     auto: true
@@ -88,7 +88,7 @@ network_interfaces:
     method: static
     address: 192.168.80.11
     netmask: 255.255.240.0
-    mtu: 1450
+    mtu: 1472
 
   - device: ohm0
     method: static

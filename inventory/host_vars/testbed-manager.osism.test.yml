@@ -44,7 +44,7 @@ network_interfaces:
     address: 192.168.16.5
     netmask: 255.255.240.0
     gateway: 192.168.16.1
-    mtu: 1450
+    mtu: 1472
     up:
       - "iptables -A FORWARD -i {{ ansible_local.testbed_network_devices.management }} -j ACCEPT"
       - "iptables -A FORWARD -o {{ ansible_local.testbed_network_devices.management }} -j ACCEPT"
@@ -56,7 +56,7 @@ network_interfaces:
     method: static
     address: 192.168.32.5
     netmask: 255.255.240.0
-    mtu: 1450
+    mtu: 1472
 
   - device: "{{ ansible_local.testbed_network_devices.external }}"
     auto: true
@@ -64,7 +64,7 @@ network_interfaces:
     method: static
     address: 192.168.96.5
     netmask: 255.255.240.0
-    mtu: 1450
+    mtu: 1472
 
   - device: "{{ ansible_local.testbed_network_devices.provider }}"
     auto: true
@@ -72,7 +72,7 @@ network_interfaces:
     method: static
     address: 192.168.112.5
     netmask: 255.255.240.0
-    mtu: 1450
+    mtu: 1472
 
   - device: "{{ ansible_local.testbed_network_devices.storage_frontend }}"
     auto: true
@@ -80,7 +80,7 @@ network_interfaces:
     method: static
     address: 192.168.64.5
     netmask: 255.255.240.0
-    mtu: 1450
+    mtu: 1472
 
 ##########################################################
 # kolla
