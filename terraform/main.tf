@@ -3,16 +3,7 @@ provider "openstack" {
 }
 
 terraform {
-  required_version = ">= 0.13"
-
-  # The "hashicorp" namespace is the new home for the HashiCorp-maintained
-  # provider plugins.
-  #
-  # source is not required for the hashicorp/* namespace as a measure of
-  # backward compatibility for commonly-used providers, but recommended for
-  # explicitness.
-  #
-  # source is required for providers in other namespaces, to avoid ambiguity.
+  required_version = ">= 0.14"
 
   required_providers {
     local = {
@@ -20,7 +11,7 @@ terraform {
     }
 
     openstack = {
-      source = "terraform-providers/openstack"
+      source = "terraform-provider-openstack/openstack"
     }
   }
 }

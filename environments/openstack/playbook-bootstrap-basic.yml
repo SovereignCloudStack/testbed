@@ -116,6 +116,7 @@
         container_format: bare
         disk_format: qcow2
         filename: /tmp/cirros.img
+        min_disk: 1
         properties:
           cpu_arch: x86_64
           distro: ubuntu
@@ -134,10 +135,11 @@
       os_image:
         cloud: admin
         state: present
-        name: ubuntu
+        name: "Ubuntu 20.04"
         container_format: bare
         disk_format: qcow2
         filename: /tmp/ubuntu.img
+        min_disk: 3
         properties:
           cpu_arch: x86_64
           distro: ubuntu
@@ -145,7 +147,7 @@
 
     # NOTE: is_public from os_image is not working like expected
     - name: Make ubuntu minimal 20.04 image visible
-      command: openstack --os-cloud admin image set --public ubuntu  # noqa 301
+      command: openstack --os-cloud admin image set --public 'Ubuntu 20.04'  # noqa 301
 
     - name: Create public network
       os_network:
