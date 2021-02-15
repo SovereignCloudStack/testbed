@@ -117,6 +117,7 @@ package_update: false
 package_upgrade: false
 write_files:
   - content: |
+      #!/usr/bin/python3
       import subprocess
       import netifaces
 
@@ -128,13 +129,43 @@ write_files:
           "${openstack_networking_port_v2.node_port_storage_backend[count.index].mac_address}": "${openstack_networking_port_v2.node_port_storage_backend[count.index].all_fixed_ips[0]}",
       }
 
+      PORTM = { "${openstack_networking_port_v2.manager_port_management.mac_address}": "${openstack_networking_port_v2.manager_port_management.all_fixed_ips[0]}" }
+
       for interface in netifaces.interfaces():
-          mac_address = netifaces.ifaddresses(interface)[netifaces.AF_LINK][0]['addr']
+          try:
+              mac_address = netifaces.ifaddresses(interface)[netifaces.AF_LINK][0]['addr']
+          except KeyError:
+              continue
           if mac_address in PORTS:
-              subprocess.run("ip addr add %s/20 dev %s" % (PORTS[mac_address], interface), shell=True)
-              subprocess.run("ip link set up dev %s" % interface, shell=True)
+              #subprocess.run("ip addr add %s/20 dev %s" % (PORTS[mac_address], interface), shell=True)
+              #subprocess.run("ip link set up dev %s" % interface, shell=True)
+              f = open("/etc/network/interfaces.d/device-%s" % interface, "w")
+              print("# Written by configure-network-devices.py", file=f)
+              print("\nauto %s\n" % interface, file=f)
+              print("iface %s inet static" % interface, file=f)
+              print("  address %s\n  netmask 255.255.240.0\n  mtu 1450" % PORTS[mac_address], file=f)
+              f.close()
+              subprocess.run("ip link set dev %s down" % interface, shell=True)
+              subprocess.run("ifup %s" % interface, shell=True)
+          if mac_address in PORTM:
+              f = open("/etc/network/interfaces.d/device-%s" % interface, "w")
+              print("# Written by configure-network-devices.py", file=f)
+              print("\nauto %s\n" % interface, file=f)
+              #print("iface %s inet dhcp" % interface, file=f)
+              print("iface %s inet static" % interface, file=f)
+              gw = PORTM[mac_address]
+              gwi = gw.rfind('.')
+              gw = gw[:gwi+1] + '1'
+              #print("  #address %s\n  #netmask 255.255.240.0\n  #gateway %s\n  #mtu 1450" % (PORTM[mac_address], gw), file=f)
+              print("  address %s\n  netmask 255.255.240.0\n  gateway %s\n  mtu 1450" % (PORTM[mac_address], gw), file=f)
+              print("  up ip route add 192.168.48.0/20 via 192.168.32.5", file=f)
+              print("  down ip route del 192.168.48.0/20 via 192.168.32.5", file=f)
+              f.close()
+              #subprocess.run("ip link set dev %s down" % interface, shell=True)
+              #subprocess.run("ifup %s" % interface, shell=True)
+              subprocess.run("ip route add 192.168.48.0/20 via 192.168.32.5" % interface, shell=True)
     path: /root/configure-network-devices.py
-    permissions: '0600'
+    permissions: '0700'
   - content: ${openstack_compute_keypair_v2.key.public_key}
     path: /home/ubuntu/.ssh/id_rsa.pub
     permissions: '0600'
@@ -159,6 +190,7 @@ write_files:
     path: /root/node.sh
     permissions: '0700'
 runcmd:
+  - "grep -lZ Recommends /etc/apt/apt.conf.d/* | xargs -0 sed -i 's/^APT::Install-Recommends/#APT::Install-Recommends/'"
   - "echo 'network: {config: disabled}' > /etc/cloud/cloud.cfg.d/99-disable-network-config.cfg"
   - "rm -f /etc/network/interfaces.d/50-cloud-init.cfg"
   - "mv /etc/netplan/50-cloud-init.yaml /etc/netplan/50-cloud-init.yaml.unused"
