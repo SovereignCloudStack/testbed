@@ -1,5 +1,10 @@
 ---
 ##########################
+# testbed specific parameters
+
+testbed_mtu: 1400
+
+##########################
 # configuration
 
 configuration_directory: /opt/configuration
@@ -29,7 +34,7 @@ docker_compose_install_type: package
 ##########################
 # versions
 
-docker_version: "5:20.10.0"
+docker_version: "5:20.10.5"
 repository_version: latest
 
 ##########################

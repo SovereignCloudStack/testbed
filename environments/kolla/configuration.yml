@@ -38,12 +38,10 @@ enable_cinder_backup: "yes"
 enable_designate: "yes"
 enable_gnocchi: "yes"
 enable_heat: "yes"
-enable_kuryr: "yes"
 enable_magnum: "yes"
 enable_manila: "yes"
 enable_octavia: "yes"
 enable_panko: "yes"
-enable_zun: "yes"
 
 enable_etcd: "yes"
 enable_grafana: "yes"
@@ -55,7 +53,7 @@ enable_skydive: "yes"
 
 # generic
 
-openstack_service_workers: 5
+openstack_service_workers: 2
 
 # profiling
 enable_osprofiler: "no"
@@ -85,19 +83,13 @@ enable_neutron_agent_ha: "yes"
 enable_neutron_dvr: "no"
 enable_neutron_qos: "yes"
 
-# NOTE: is only needed for Rocky
-neutron_fwaas_version: "v2"
-
 # nova
 nova_console: novnc
 nova_virt_type: kvm
 
 # octavia
+octavia_network_type: tenant
 octavia_loadbalancer_topology: "ACTIVE_STANDBY"
-
-octavia_amp_boot_network_list: OCTAVIA_MGMT_NETWORK_ID
-octavia_amp_secgroup_list: OCTAVIA_MGMT_SECURITY_GROUP_ID
-octavia_amp_flavor_id: OCTAVIA_FLAVOR_ID
 
 # ceilometer
 ceilometer_database_type: gnocchi

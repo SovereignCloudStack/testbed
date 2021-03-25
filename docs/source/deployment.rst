@@ -20,6 +20,9 @@ Deployment
 Requirements
 ============
 
+Cloud resources
+---------------
+
 To use this testbed, a project on an OpenStack cloud environment is required. Cinder
 must be usable there as additional service.
 
@@ -39,6 +42,14 @@ The testbed requires the following resources When using the default flavors.
 
    When deploying all additional OpenStack services, the use of nodes with at least
    32 GByte memory is recommended. Then 104 GByte memory are required.
+
+Software
+--------
+
+Terraform in a current version must be installed and usable.
+
+Information on installing Terraform can be found in the Terraform
+documentation: https://learn.hashicorp.com/tutorials/terraform/install-cli
 
 Supported cloud providers
 =========================
@@ -108,14 +119,14 @@ each supported cloud provider.
 
    .. code-block:: console
 
-      PARAMS="-var 'cloudprovider=the-name-of-the-entry'"
+      PARAMS="-var 'cloud_provider=the-name-of-the-entry'"
 
    A complete example with the environment for the Betacloud and a cloud provider with the name
    ``the-name-of-the-entry`` looks like this:
 
    .. code-block:: console
 
-      make deploy ENVIRONMENT=betacloud PARAMS="-var 'cloudprovider=the-name-of-the-entry'"
+      make deploy ENVIRONMENT=betacloud PARAMS="-var 'cloud_provider=the-name-of-the-entry'"
 
    Alternatively, you can also just set the ``OS_CLOUD`` environment
    (``export OS_CLOUD=the-name-of-the-entry`` in bash), so your ``openstack`` command line
@@ -218,6 +229,8 @@ Initialization
    created. The environment is only prepared and the manager is provided. This
    is customizable.
 
+   * Use ``deploy-identity`` to deploy identity services when building the environment.
+     This also includes all required infrastructure services.
    * Use ``deploy-infra`` to deploy infrastructure services when building the environment.
    * Use ``deploy-ceph`` to deploy Ceph when building the environment.
    * Use ``deploy-openstack`` to deploy OpenStack when building the environment. This also
