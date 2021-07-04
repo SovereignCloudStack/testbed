@@ -1,5 +1,12 @@
 ---
 ##########################
+# testbed specific parameters
+
+testbed_mtu: 1400
+testbed_mtu_manager: "{{ testbed_mtu }}"
+testbed_mtu_node: "{{ testbed_mtu }}"
+
+##########################
 # configuration
 
 configuration_directory: /opt/configuration
@@ -29,7 +36,7 @@ docker_compose_install_type: package
 ##########################
 # versions
 
-docker_version: "5:20.10.0"
+docker_version: "5:20.10.6"
 repository_version: latest
 
 ##########################
@@ -45,13 +52,14 @@ resolvconf_nameserver:
   - 8.8.8.8
   - 9.9.9.9
 resolvconf_search: osism.test
+resolvconf_dnssec: false
 
 ##########################
 # hosts
 
 hosts_type: template
 hosts_additional_entries:
-  api-int.osism.test: 192.168.32.9
+  api-int.osism.test: 192.168.16.9
   api.osism.test: 192.168.96.9
 
 ##########################
@@ -69,7 +77,7 @@ cleanup_services_extra:
 ##########################
 # kolla
 
-kolla_internal_vip_address: 192.168.32.9
+kolla_internal_vip_address: 192.168.16.9
 kolla_external_vip_address: 192.168.96.9
 
 ##########################

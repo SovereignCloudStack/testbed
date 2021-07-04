@@ -1,7 +1,7 @@
 ---
 name: Check terraform syntax
 
-on:  # yamllint disable-line rule:truthy
+"on":
   push:
     paths:
       - 'terraform/**'
@@ -17,7 +17,7 @@ jobs:
     strategy:
       matrix:
         terraform-version:
-          - 0.14.2
+          - 1.0.1
 
     steps:
       - name: Checkout
@@ -26,12 +26,11 @@ jobs:
         uses: hashicorp/setup-terraform@v1
         with:
           terraform_version: ${{ matrix.terraform-version }}
-      - name: Terraform init
-        run: terraform init
+      - name: Terraform validate
+        run: make validate
         working-directory: ./terraform
+        env:
+          ENVIRONMENT: default
       - name: Terraform format
         run: terraform fmt -check
-        working-directory: ./terraform
-      - name: Terraform validate
-        run: terraform validate
         working-directory: ./terraform

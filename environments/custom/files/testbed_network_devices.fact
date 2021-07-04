@@ -15,7 +15,7 @@ NETWORKS = {
 result = {}
 
 for interface in netifaces.interfaces():
-    if interface in ['lo', 'docker0', 'ohm0']:
+    if interface in ['lo', 'docker0', 'ohm0', 'o-hm0']:
         continue
     elif interface.startswith('br'):
         continue
@@ -29,18 +29,17 @@ for interface in netifaces.interfaces():
         continue
     elif interface.startswith('qg'):
         continue
+    elif interface.startswith('genev'):
+        continue
 
     addrs = netifaces.ifaddresses(interface)
     if netifaces.AF_INET in addrs:
-        addr = addrs[netifaces.AF_INET][0]['addr']
+        for addr in addrs[netifaces.AF_INET]:
+            for network in NETWORKS:
+                if addr['addr'].startswith(NETWORKS[network]):
+                    result[network] = interface
 
-        for network in NETWORKS:
-            if addr.startswith(NETWORKS[network]):
-                result[network] = interface
-
-    # NOTE: After a reboot of the nodes the provider network has
-    #       no more IP configuration.
-    else:
-        result['provider'] = interface
+# NOTE: vxlan is always used as provider network.
+result['provider'] = 'vxlan0'
 
 print(json.dumps(result))

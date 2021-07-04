@@ -6,13 +6,32 @@ resource "openstack_networking_floatingip_v2" "manager_floating_ip" {
 resource "openstack_networking_port_v2" "manager_port_management" {
   network_id = openstack_networking_network_v2.net_management.id
   security_group_ids = [
-    openstack_compute_secgroup_v2.security_group_management.id,
-    openstack_compute_secgroup_v2.security_group_manager.id
+    openstack_compute_secgroup_v2.security_group_management.id
   ]
 
   fixed_ip {
     ip_address = "192.168.16.5"
     subnet_id  = openstack_networking_subnet_v2.subnet_management.id
+  }
+
+  allowed_address_pairs {
+    ip_address = "192.168.48.0/20"
+  }
+
+  allowed_address_pairs {
+    ip_address = "192.168.64.0/20"
+  }
+
+  allowed_address_pairs {
+    ip_address = "192.168.80.0/20"
+  }
+
+  allowed_address_pairs {
+    ip_address = "192.168.96.0/20"
+  }
+
+  allowed_address_pairs {
+    ip_address = "192.168.112.0/20"
   }
 }
 
@@ -21,75 +40,26 @@ resource "openstack_networking_floatingip_associate_v2" "manager_floating_ip_ass
   port_id     = openstack_networking_port_v2.manager_port_management.id
 }
 
-resource "openstack_networking_port_v2" "manager_port_internal" {
-  network_id         = openstack_networking_network_v2.net_internal.id
-  security_group_ids = [openstack_compute_secgroup_v2.security_group_internal.id]
-
-  fixed_ip {
-    ip_address = "192.168.32.5"
-    subnet_id  = openstack_networking_subnet_v2.subnet_internal.id
-  }
-
-  allowed_address_pairs {
-    ip_address = "192.168.48.0/20"
-  }
-}
-
-resource "openstack_networking_port_v2" "manager_port_external" {
-  network_id         = openstack_networking_network_v2.net_external.id
-  security_group_ids = [openstack_compute_secgroup_v2.security_group_external.id]
-
-  fixed_ip {
-    ip_address = "192.168.96.5"
-    subnet_id  = openstack_networking_subnet_v2.subnet_external.id
-  }
-
-  allowed_address_pairs {
-    ip_address = "192.168.48.0/20"
-  }
-}
-
-resource "openstack_networking_port_v2" "manager_port_provider" {
-  network_id = openstack_networking_network_v2.net_provider.id
-
-  # NOTE: port_security_enabled not usable with OVH
-  #
-  # {"NeutronError": {"message": "Unrecognized attribute(s) 'port_security_enabled'", "type": "HTTPBadRequest", "detail": ""}}
-  port_security_enabled = var.port_security_enabled
-
-  fixed_ip {
-    ip_address = "192.168.112.5"
-    subnet_id  = openstack_networking_subnet_v2.subnet_provider.id
-  }
-}
-
-resource "openstack_networking_port_v2" "manager_port_storage_frontend" {
-  network_id         = openstack_networking_network_v2.net_storage_frontend.id
-  security_group_ids = [openstack_compute_secgroup_v2.security_group_storage_frontend.id]
-
-  fixed_ip {
-    ip_address = "192.168.64.5"
-    subnet_id  = openstack_networking_subnet_v2.subnet_storage_frontend.id
-  }
+resource "openstack_blockstorage_volume_v3" "manager_base_volume" {
+  count             = 0
+  image_id          = data.openstack_images_image_v2.image.id
+  name              = "${var.prefix}-volume-manager-base"
+  size              = var.volume_size_base
+  availability_zone = var.volume_availability_zone
 }
 
 resource "openstack_compute_instance_v2" "manager_server" {
   name              = "${var.prefix}-manager"
   availability_zone = var.availability_zone
-  image_name        = var.image
   flavor_name       = var.flavor_manager
   key_pair          = openstack_compute_keypair_v2.key.name
-  config_drive      = true
+  config_drive      = var.enable_config_drive
 
   depends_on = [
-    openstack_compute_instance_v2.node_server
+    null_resource.node_semaphore
   ]
 
   network { port = openstack_networking_port_v2.manager_port_management.id }
-  network { port = openstack_networking_port_v2.manager_port_internal.id }
-  network { port = openstack_networking_port_v2.manager_port_external.id }
-  network { port = openstack_networking_port_v2.manager_port_provider.id }
-  network { port = openstack_networking_port_v2.manager_port_storage_frontend.id }
 
   user_data = <<-EOT
 #cloud-config
@@ -103,17 +73,20 @@ write_files:
       import netifaces
 
       PORTS = {
-          "${openstack_networking_port_v2.manager_port_internal.mac_address}": "${openstack_networking_port_v2.manager_port_internal.all_fixed_ips[0]}",
-          "${openstack_networking_port_v2.manager_port_external.mac_address}": "${openstack_networking_port_v2.manager_port_external.all_fixed_ips[0]}",
-          "${openstack_networking_port_v2.manager_port_provider.mac_address}": "${openstack_networking_port_v2.manager_port_provider.all_fixed_ips[0]}",
-          "${openstack_networking_port_v2.manager_port_storage_frontend.mac_address}": "${openstack_networking_port_v2.manager_port_storage_frontend.all_fixed_ips[0]}",
+          "${openstack_networking_port_v2.manager_port_management.mac_address}": [
+              "192.168.64.5/20",
+              "192.168.96.5/20"
+          ]
       }
 
       for interface in netifaces.interfaces():
-          mac_address = netifaces.ifaddresses(interface)[netifaces.AF_LINK][0]['addr']
-          if mac_address in PORTS:
-              subprocess.run("ip addr add %s/20 dev %s" % (PORTS[mac_address], interface), shell=True)
-              subprocess.run("ip link set up dev %s" % interface, shell=True)
+          try:
+              mac_address = netifaces.ifaddresses(interface)[netifaces.AF_LINK][0]['addr']
+              if mac_address in PORTS:
+                  for address in PORTS[mac_address]:
+                      subprocess.run("ip addr add %s dev %s" % (address, interface), shell=True)
+          except:
+              pass
     path: /root/configure-network-devices.py
     permissions: '0600'
   - content: ${openstack_compute_keypair_v2.key.public_key}
@@ -154,6 +127,9 @@ write_files:
   - content: |
       #!/usr/bin/env bash
 
+      apt-get install --yes python3-netifaces
+      python3 /root/configure-network-devices.py
+
       cp /home/ubuntu/.ssh/id_rsa /home/dragon/.ssh/id_rsa
       cp /home/ubuntu/.ssh/id_rsa.pub /home/dragon/.ssh/id_rsa.pub
       chown -R dragon:dragon /home/dragon/.ssh
@@ -161,6 +137,7 @@ write_files:
       sudo -iu dragon ansible-playbook -i testbed-manager.osism.test, /opt/manager-part-1.yml -e configuration_git_version=${var.configuration_version}
       sudo -iu dragon sh -c 'cd /opt/configuration; ./scripts/set-ceph-version.sh ${var.ceph_version}'
       sudo -iu dragon sh -c 'cd /opt/configuration; ./scripts/set-openstack-version.sh ${var.openstack_version}'
+      sudo -iu dragon sh -c 'cd /opt/configuration; ./scripts/enable-secondary-nodes.sh ${var.number_of_nodes}'
 
       sudo -iu dragon ansible-playbook -i testbed-manager.osism.test, /opt/manager-part-2.yml
       sudo -iu dragon ansible-playbook -i testbed-manager.osism.test, /opt/manager-part-3.yml
@@ -185,6 +162,9 @@ write_files:
       # copy network configuration
       sudo -iu dragon sh -c 'INTERACTIVE=false osism-generic network'
 
+      # apply workarounds
+      sudo -iu dragon sh -c 'INTERACTIVE=false osism-run custom workarounds'
+
       # reboot nodes
       sudo -iu dragon sh -c 'INTERACTIVE=false osism-generic reboot -l testbed-nodes -e ireallymeanit=yes'
       sudo -iu dragon sh -c 'INTERACTIVE=false osism-generic wait-for-connection -l testbed-nodes -e ireallymeanit=yes'
@@ -200,6 +180,12 @@ write_files:
 
       # deploy helper services
       sudo -iu dragon sh -c '/opt/configuration/scripts/001-helper-services.sh'
+
+      # deploy identity services
+      # NOTE: All necessary infrastructure services are also deployed.
+      if [[ "${var.deploy_identity}" == "true" ]]; then
+          sudo -iu dragon sh -c '/opt/configuration/scripts/999-identity-services.sh'
+      fi
 
       # deploy infrastructure services
       if [[ "${var.deploy_infrastructure}" == "true" ]]; then

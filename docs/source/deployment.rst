@@ -20,6 +20,9 @@ Deployment
 Requirements
 ============
 
+Cloud resources
+---------------
+
 To use this testbed, a project on an OpenStack cloud environment is required. Cinder
 must be usable there as additional service.
 
@@ -38,15 +41,40 @@ The testbed requires the following resources When using the default flavors.
 .. note::
 
    When deploying all additional OpenStack services, the use of nodes with at least
-   32 GByte memory is recommended. Then 104 GByte memory are required.
+   32 GByte memory is recommended. Then 104 GByte memory in total are required.
 
-Supported cloud providers
-=========================
+Software
+--------
 
-**Works**
+Terraform in a current version must be installed and usable.
+
+Information on installing Terraform can be found in the Terraform
+documentation: https://learn.hashicorp.com/tutorials/terraform/install-cli
+
+Cloud access
+------------
 
 There is a separate environment file, e.g. ``environments/betacloud.tfvars``, for
 each supported cloud provider.
+
+If the name of the cloud provider in ``clouds.yaml`` differs from the intended default, e.g.
+``betacloud`` for Betacloud, this can be adjusted as follows.
+
+.. code-block:: console
+
+   PARAMS="-var 'cloud_provider=the-name-of-the-entry'"
+
+A complete example with the environment for the Betacloud and a cloud provider with the name
+``the-name-of-the-entry`` looks like this:
+
+.. code-block:: console
+
+   make deploy ENVIRONMENT=betacloud PARAMS="-var 'cloud_provider=the-name-of-the-entry'"
+
+Alternatively, you can also just set the ``OS_CLOUD`` environment
+(``export OS_CLOUD=the-name-of-the-entry`` in bash), so your ``openstack`` command line
+client works without passing ``--os-cloud=``.
+
 
 * `Betacloud <https://www.betacloud.de>`_
 
@@ -54,17 +82,24 @@ each supported cloud provider.
 
      * The credentials are stored in ``clouds.yaml`` and ``secure.yaml`` with the name ``betacloud``.
 
+     * To use the Betacloud, please send an email to support@betacloud.de. Please state that you are
+       interested in using the OSISM testbed.
+
 * `Citycloud <https://www.citycloud.com>`_
 
   .. note::
 
      * The credentials are stored in ``clouds.yaml`` and ``secure.yaml`` with the name ``citycloud``.
 
+     * Registration is possible at the following URL: https://admin.citycloud.com/login?register=true
+
 * `OVH <https://www.ovhcloud.com>`_
 
   .. note::
 
      * The credentials are stored in ``clouds.yaml`` and ``secure.yaml`` with the name ``ovh``.
+
+     * Registration is possible at the following URL: https://us.ovhcloud.com/auth/signup/#/
 
      * The public L3 network services at OVH are currently still in beta. For more details, please
        visit https://labs.ovh.com/public-cloud-l3-services.
@@ -88,6 +123,8 @@ each supported cloud provider.
 
   .. note::
 
+     * Registration is possible at the following URL: https://www.websso.t-systems.com/eshop/agb/de/public/configcart/show
+
      * You will need to create your own Ubuntu 20.04 image to make sure that you have a larger
        min-disk (20GB recommended). You can base it on the OTC Ubuntu images by creating a volume
        from the OTC Ubuntu image and then create an image from it again (with ``--min-disk 20``).
@@ -96,36 +133,45 @@ each supported cloud provider.
        also use downloaded images from upstream and register them. Note the ``__os_distro``
        property that you need to set on OTC.
 
-     * The otc-physical environment is for an SCS/OSISM testbed deployment, which would be a really
-       nice test environment. We don't have it working yet, unfortunately, so this is work in
-       progress.
+       The management console is accessible at https://auth.otc.t-systems.com/authui/login.action.
 
+       Due to a few characteristics of the OTC, the deployment of the testbed there currently
+       takes significantly longer than on other OpenStack-based clouds.
 
-.. note::
+  .. note::
 
-   If the name of the cloud provider in ``clouds.yaml`` differs from the intended default, e.g.
-   ``betacloud`` for Betacloud, this can be adjusted as follows.
+     When using OTC BMS, the following error may occur when creating BMS nodes. Experience shows
+     that changing the zone (``eu-de-01`` to ``eu-de-02``) can solve the problem. It is likely that
+     the zones do not always have a sufficient number of BMS nodes available for use.
 
-   .. code-block:: console
+     .. code::
 
-      PARAMS="-var 'cloudprovider=the-name-of-the-entry'"
+        │ Error: Error waiting for instance (920e5587-0d4b-417d-a4ad-5f0584dda43b) to become ready: unexpected state 'ERROR', wanted target 'ACTIVE'. last error: %!s(<nil>)
+        │
+        │   with opentelekomcloud_compute_bms_server_v2.node_server[1],
+        │   on otcbms_custom.tf line 11, in resource "opentelekomcloud_compute_bms_server_v2" "node_server":
+        │   11: resource "opentelekomcloud_compute_bms_server_v2" "node_server" {
 
-   A complete example with the environment for the Betacloud and a cloud provider with the name
-   ``the-name-of-the-entry`` looks like this:
+  .. note::
 
-   .. code-block:: console
+     When using OTC BMS, take into care that the necessary Ubuntu 20.04 image is currently only
+     supported on BMS nodes of type ``physical.o2.medium``.
 
-      make deploy ENVIRONMENT=betacloud PARAMS="-var 'cloudprovider=the-name-of-the-entry'"
+  .. warning::
 
-   Alternatively, you can also just set the ``OS_CLOUD`` environment
-   (``export OS_CLOUD=the-name-of-the-entry`` in bash), so your ``openstack`` command line
-   client works without passing ``--os-cloud=``.
+     The OTC has strange rate limits on their API servers. Therefore it is required to limit
+     the number of concurrent operations by setting ``PARALLELISM=1``.
 
-* `SCS Demonstrator <https://gx-scs.okeanos.dev>`_
+     .. code-block:: console
+
+        make deploy ENVIRONMENT=otc PARALLELISM=1
+
+* `SCS Demonstrator <https://ui.gx-scs.sovereignit.cloud/>`_
 
   .. note::
 
      * The credentials are stored in ``clouds.yaml`` and ``secure.yaml`` with the name ``scs-demo``.
+
 
 Preparations
 ============
@@ -149,7 +195,7 @@ The defaults for the environment variables are intended for the Betacloud.
 **Variable**              **Default**
 ------------------------- -----------
 availability_zone         south-2
-ceph_version              nautilus
+ceph_version              octopus
 cloud_provider            betacloud
 configuration_version     master
 flavor_manager            2C-4GB-20GB
@@ -200,13 +246,19 @@ Initialization
 .. code-block:: console
 
    make dry-run ENVIRONMENT=betacloud
+   make plan ENVIRONMENT=betacloud  # this is just an alias for "make dry-run"
+
+The most basic deployment can be achived with the code below. It should
+take about half an hour to finish. For more advanced deployments take a look
+at the note box.
 
 .. code-block:: console
 
    make deploy ENVIRONMENT=betacloud
+   make create ENVIRONMENT=betacloud  # this is just an alias for "make deploy"
 
-.. raw:: html
-   :file: html/asciinema-tf-deployment.html
+When the terraform deployment is complete, you can watch the ansible deployment with
+the command below. The checks won't work until the deployment is fully completed.
 
 .. code-block:: console
 
@@ -218,15 +270,19 @@ Initialization
    created. The environment is only prepared and the manager is provided. This
    is customizable.
 
+   * Use ``deploy-identity`` to deploy identity services when building the environment.
+     This also includes all required infrastructure services.
    * Use ``deploy-infra`` to deploy infrastructure services when building the environment.
    * Use ``deploy-ceph`` to deploy Ceph when building the environment.
-   * Use ``deploy-openstack`` to deploy OpenStack when building the environment. This also
-     includes Ceph and infrastructure services.
+   * Use ``deploy-openstack`` to deploy OpenStack when building the environment.
+     This also includes Ceph and infrastructure services. (Takes about 2 hours)
+   * Use ``deploy-full`` to deploy OpenStack including Ceph and infrastructure services as
+     well as monitoring.
 
-.. note::
+This video shows a code record of how your terraform deployment should look like.
 
-   You can also set the ``ENVIRONMENT`` environment variable (``export ENVIRONMENT=betacloud``
-   in bash) to avoid having to pass it manually all the time.
+.. raw:: html
+   :file: html/asciinema-tf-deployment.html
 
 
 Usage
@@ -250,14 +306,147 @@ Open a login shell on the manager via SSH:
 
 .. code-block:: console
 
-   make login ENVIRONMENT=betacloud
+   make ssh ENVIRONMENT=betacloud
+   make login ENVIRONMENT=betacloud  # this is just an alias for "make ssh"
 
-Create a tunnel for the internal networks (``192.168.16.0/20``, ``192.168.32.0/20``,
+Create a tunnel for the internal networks (``192.168.16.0/20``,
 ``192.168.96.0/20`` ``192.168.112.0/20``) via sshuttle (https://github.com/sshuttle/sshuttle):
 
 .. code-block:: console
 
-   make tunnel ENVIRONMENT=betacloud
+   make sshuttle ENVIRONMENT=betacloud
+   make tunnel ENVIRONMENT=betacloud  # this is just an alias for "make sshuttle"
+
+
+Checks
+======
+
+Most of the checks require a full installation of openstack and ceph.
+Only "ping" works without them.
+
+Check the installation via ping:
+
+.. code-block:: console
+
+   make ping
+
+Run check script for openstack and infrastructure components:
+
+.. code-block:: console
+
+   make check
+
+Run rally script (benchmark openstack):
+
+.. code-block:: console
+
+   make rally
+
+Run refstack script:
+
+.. code-block:: console
+
+   make refstack
+
+
+General Management
+==================
+
+Show endpoint URLs (ara, cockpit, phpmyadmin):
+
+.. code-block:: console
+
+   make endpoints
+
+Show manager address:
+
+.. code-block:: console
+
+   make address
+
+Open an Openstack Client Console:
+
+.. code-block:: console
+
+   make openstack
+
+Copy a file to the manager:
+
+.. code-block:: console
+
+   make scp PARAMS=/file/to/be/copied SOURCE=/path/to/destination
+   make copy PARAMS=/file/to/be/copied SOURCE=/path/to/destination # this is just an alias for "make scp"
+
+
+Terraform Management
+====================
+
+Delete providers:
+
+.. code-block:: console
+
+   make reset
+
+Init terraform, select workspace and copy override and custom files:
+
+.. code-block:: console
+
+   make init
+
+Init terraform and validate:
+
+.. code-block:: console
+
+   make validate
+
+Init terraform and import a resource:
+
+.. code-block:: console
+
+   make attach
+
+Init terraform and remove a resource:
+
+.. code-block:: console
+
+   make detach
+
+Init terraform and push a state to a remote backend:
+
+.. code-block:: console
+
+   make state-push
+   make push # this is just an alias for "make state-push"
+
+Init terraform and generate a graph in DOT format:
+
+.. code-block:: console
+
+   make graph
+
+Init terraform and show the current state:
+
+.. code-block:: console
+
+   make show
+
+Init terraform and show the configuration of a specific resource:
+
+.. code-block:: console
+
+   make list
+
+
+Internals
+=========
+
+These are used for make internal functions and not supposed to be used by a user:
+
+.. code-block:: console
+
+   make .deploy.$(ENVIRONMENT) # check if a deployment is present
+   make .MANAGER_ADDRESS.$(ENVIRONMENT) # return manager address
+   make .id_rsa.$(ENVIRONMENT) # write private key
 
 Decommissioning
 ===============

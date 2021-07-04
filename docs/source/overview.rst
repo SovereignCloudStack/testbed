@@ -25,8 +25,9 @@ Ceph
 ----
 
 * Luminous
-* Nautilus (**default**)
-* Octopus
+* Nautilus
+* Octopus (**default**)
+* Pacific
 
 OpenStack
 ---------
@@ -78,16 +79,14 @@ OpenStack
 * Barbican
 * Ceilometer
 * Cinder
-* Cloudkitty
 * Glance
 * Heat
 * Horizon
 * Keystone
-* Kuryr
 * Magnum
 * Manila
 * Neutron
 * Nova (with KVM)
 * Octavia
 * Panko
-* Zun (with Kata Containers)
+* Senlin

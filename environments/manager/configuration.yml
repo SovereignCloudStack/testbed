@@ -2,17 +2,21 @@
 ##########################
 # versions
 
-ceph_version: nautilus
+awx_version: latest
+ceph_version: octopus
 manager_version: latest
 openstack_version: victoria
+
+##########################
+# cockpit
+
+configure_cockpit: true
+cockpit_host: "{{ hostvars[inventory_hostname]['ansible_' + console_interface]['ipv4']['address'] }}"
 
 ##########################
 # manager
 
 ara_server_database_type: sqlite3
-
-configure_cockpit: true
-cockpit_host: "{{ hostvars[inventory_hostname]['ansible_' + console_interface]['ipv4']['address'] }}"
 
 ara_enable: true
 ara_server_host: "{{ hostvars[inventory_hostname]['ansible_' + console_interface]['ipv4']['address'] }}"
@@ -23,5 +27,9 @@ awx_host: "{{ hostvars[inventory_hostname]['ansible_' + console_interface]['ipv4
 awx_vault_type: vault
 vault_host: "{{ hostvars[inventory_hostname]['ansible_' + console_interface]['ipv4']['address'] }}"
 
-netbox_enable: false
+##########################
+# netbox
+
+netbox_enable: true
 netbox_host: "{{ hostvars[inventory_hostname]['ansible_' + console_interface]['ipv4']['address'] }}"
+netbox_api_url: "http://{{ netbox_host }}:8121"

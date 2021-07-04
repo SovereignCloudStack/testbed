@@ -8,8 +8,11 @@ USERNAME = dragon
 OPENSTACK = openstack
 TERRAFORM = terraform
 
+PARALLELISM = 10
 RESOURCE = openstack_networking_floatingip_v2.manager_floating_ip
 STATE = errored.tfstate
+
+APPLY_PARAMS = -auto-approve -parallelism=$(PARALLELISM)
 
 ifneq (,$(wildcard ./local.env))
   include local.env
@@ -23,6 +26,9 @@ ifneq (,$(wildcard ./minio.env))
   include minio.env
 endif
 
+reset:
+	@rm -rf .terraform/providers
+
 init:
 	@if [ ! -d .terraform/providers ]; then $(TERRAFORM) init; fi
 
@@ -30,9 +36,16 @@ init:
 
 	@rm -f *_override.tf
 	@for over in `grep '^# *override:' "environments/${ENVIRONMENT}.tfvars" | sed 's/^# *override://'`; do \
-		echo $$over; \
 		cp -p overrides/$${over}_override.tf .; \
 	done
+
+	@rm -f *_custom.tf
+	@for custom in `grep '^# *customisation:' "environments/${ENVIRONMENT}.tfvars" | sed 's/^# *customisation://'`; do \
+		cp -p customisations/$${custom}_custom.tf .; \
+	done
+
+validate: init
+	@$(TERRAFORM) validate $(PARAMS)
 
 attach: init
 	@$(TERRAFORM) import -var-file="environments/$(ENVIRONMENT).tfvars" $(RESOURCE) $(PARAMS)
@@ -48,29 +61,49 @@ dry-run: init
 
 deploy: init
 	@touch .deploy.$(ENVIRONMENT)
-	@$(TERRAFORM) apply -auto-approve -var-file="environments/$(ENVIRONMENT).tfvars" -var "configuration_version=$(CONFIGURATION)" $(PARAMS)
+	@$(TERRAFORM) apply $(APPLY_PARAMS) -var-file="environments/$(ENVIRONMENT).tfvars" -var "configuration_version=$(CONFIGURATION)" $(PARAMS)
+
+deploy-identity: init
+	@touch .deploy.$(ENVIRONMENT)
+	@$(TERRAFORM) apply $(APPLY_PARAMS) -var-file="environments/$(ENVIRONMENT).tfvars" -var 'deploy_identity=true' $(PARAMS)
 
 deploy-infra: init
 	@touch .deploy.$(ENVIRONMENT)
-	@$(TERRAFORM) apply -auto-approve -var-file="environments/$(ENVIRONMENT).tfvars" -var 'deploy_infrastructure=true' $(PARAMS)
+	@$(TERRAFORM) apply $(APPLY_PARAMS) -var-file="environments/$(ENVIRONMENT).tfvars" -var 'deploy_infrastructure=true' $(PARAMS)
 
 deploy-ceph: init
 	@touch .deploy.$(ENVIRONMENT)
-	@$(TERRAFORM) apply -auto-approve -var-file="environments/$(ENVIRONMENT).tfvars" -var 'deploy_ceph=true' $(PARAMS)
+	@$(TERRAFORM) apply $(APPLY_PARAMS) -var-file="environments/$(ENVIRONMENT).tfvars" -var 'deploy_ceph=true' $(PARAMS)
 
 deploy-openstack: init
 	@touch .deploy.$(ENVIRONMENT)
-	@$(TERRAFORM) apply -auto-approve -var-file="environments/$(ENVIRONMENT).tfvars" -var 'deploy_infrastructure=true' -var 'deploy_ceph=true' -var 'deploy_openstack=true' $(PARAMS)
+	@$(TERRAFORM) apply $(APPLY_PARAMS) -approve -var-file="environments/$(ENVIRONMENT).tfvars" -var 'deploy_infrastructure=true' -var 'deploy_ceph=true' -var 'deploy_openstack=true' $(PARAMS)
 
 deploy-full: init
 	@touch .deploy.$(ENVIRONMENT)
-	@$(TERRAFORM) apply -auto-approve -var-file="environments/$(ENVIRONMENT).tfvars" -var 'deploy_infrastructure=true' -var 'deploy_ceph=true' -var 'deploy_openstack=true' -var 'deploy_monitoring=true' $(PARAMS)
+	@$(TERRAFORM) apply $(APPLY_PARAMS) -var-file="environments/$(ENVIRONMENT).tfvars" -var 'deploy_infrastructure=true' -var 'deploy_ceph=true' -var 'deploy_openstack=true' -var 'deploy_monitoring=true' $(PARAMS)
+
+check: .MANAGER_ADDRESS.$(ENVIRONMENT) .id_rsa.$(ENVIRONMENT)
+	@. ./.MANAGER_ADDRESS.$(ENVIRONMENT); \
+	ssh -o StrictHostKeyChecking=no -i .id_rsa.$(ENVIRONMENT) $(USERNAME)@$$MANAGER_ADDRESS /opt/configuration/contrib/check_openstack_services.sh; \
+	ssh -o StrictHostKeyChecking=no -i .id_rsa.$(ENVIRONMENT) $(USERNAME)@$$MANAGER_ADDRESS /opt/configuration/contrib/check_infrastructure_services.sh
+
+rally: .MANAGER_ADDRESS.$(ENVIRONMENT) .id_rsa.$(ENVIRONMENT)
+	@. ./.MANAGER_ADDRESS.$(ENVIRONMENT); \
+	ssh -o StrictHostKeyChecking=no -i .id_rsa.$(ENVIRONMENT) $(USERNAME)@$$MANAGER_ADDRESS /opt/configuration/contrib/rally/rally.sh
+
+refstack: .MANAGER_ADDRESS.$(ENVIRONMENT) .id_rsa.$(ENVIRONMENT)
+	@. ./.MANAGER_ADDRESS.$(ENVIRONMENT); \
+	ssh -o StrictHostKeyChecking=no -i .id_rsa.$(ENVIRONMENT) $(USERNAME)@$$MANAGER_ADDRESS /opt/configuration/contrib/refstack/refstack.sh
+
+graph: init
+	@$(TERRAFORM) graph
 
 show: init
 	@$(TERRAFORM) show
 
 clean: init
-	@$(TERRAFORM) destroy -auto-approve -var-file="environments/$(ENVIRONMENT).tfvars" $(PARAMS)
+	@$(TERRAFORM) destroy $(APPLY_PARAMS) -var-file="environments/$(ENVIRONMENT).tfvars" $(PARAMS)
 	@rm -f .deploy.$(ENVIRONMENT) .MANAGER_ADDRESS.$(ENVIRONMENT)
 	@rm -f .id_rsa.$(ENVIRONMENT)
 	@$(TERRAFORM) workspace select default
@@ -84,9 +117,17 @@ ssh: .MANAGER_ADDRESS.$(ENVIRONMENT) .id_rsa.$(ENVIRONMENT)
 	@. ./.MANAGER_ADDRESS.$(ENVIRONMENT); \
 	ssh -o StrictHostKeyChecking=no -i .id_rsa.$(ENVIRONMENT) $(USERNAME)@$$MANAGER_ADDRESS
 
+scp: .MANAGER_ADDRESS.$(ENVIRONMENT) .id_rsa.$(ENVIRONMENT)
+	@. ./.MANAGER_ADDRESS.$(ENVIRONMENT); \
+	scp -o StrictHostKeyChecking=no -i .id_rsa.$(ENVIRONMENT) $(PARAMS) $(USERNAME)@$$MANAGER_ADDRESS:$(SOURCE) .
+
 sshuttle: .MANAGER_ADDRESS.$(ENVIRONMENT) .id_rsa.$(ENVIRONMENT)
 	@. ./.MANAGER_ADDRESS.$(ENVIRONMENT); \
-	sshuttle --ssh-cmd "ssh -o StrictHostKeyChecking=no -i .id_rsa.$(ENVIRONMENT) " -r $(USERNAME)@$$MANAGER_ADDRESS 192.168.16.0/20 192.168.32.0/20 192.168.96.0/20 192.168.112.0/20
+	sshuttle --ssh-cmd "ssh -o StrictHostKeyChecking=no -i .id_rsa.$(ENVIRONMENT) " -r $(USERNAME)@$$MANAGER_ADDRESS 192.168.16.0/20 192.168.96.0/20 192.168.112.0/20
+
+address: .MANAGER_ADDRESS.$(ENVIRONMENT) .id_rsa.$(ENVIRONMENT)
+	@. ./.MANAGER_ADDRESS.$(ENVIRONMENT); \
+	echo $$MANAGER_ADDRESS
 
 console: .deploy.$(ENVIRONMENT)
 	@$(OPENSTACK) console url show testbed-$(CONSOLE)
@@ -139,8 +180,11 @@ endpoints: init
 	echo "| Cockpit    | https://$$MANAGER_ADDRESS:8130 |"; \
 	echo "| phpMyAdmin | http://$$MANAGER_ADDRESS:8110  |";
 
+copy: scp
 create: deploy
 login: ssh
+plan: dry-run
+push: state-push
 tunnel: sshuttle
 
-PHONY: clean console attach detach sshuttle ssh dry-run list deploy deploy-infra deploy-ceph deploy-openstack watch openstack create log login
+PHONY: clean console attach detach sshuttle ssh dry-run list deploy deploy-infra deploy-ceph deploy-openstack watch openstack create log login scp copy address check rally refstack

@@ -12,12 +12,27 @@ variable "image" {
   default = "Ubuntu 20.04"
 }
 
+variable "image_node" {
+  type    = string
+  default = "Ubuntu 20.04"
+}
+
+variable "volume_size_base" {
+  type    = number
+  default = 20
+}
+
 variable "volume_size_storage" {
   type    = number
   default = 10
 }
 
 variable "flavor_node" {
+  type    = string
+  default = "4C-16GB-40GB"
+}
+
+variable "flavor_node_alt" {
   type    = string
   default = "4C-16GB-40GB"
 }
@@ -72,6 +87,11 @@ variable "deploy_monitoring" {
   default = false
 }
 
+variable "deploy_identity" {
+  type    = bool
+  default = false
+}
+
 variable "run_rally" {
   type    = bool
   default = false
@@ -89,7 +109,7 @@ variable "configuration_version" {
 
 variable "ceph_version" {
   type    = string
-  default = "nautilus"
+  default = "octopus"
 }
 
 variable "openstack_version" {
@@ -110,6 +130,11 @@ variable "number_of_volumes" {
 variable "enable_dhcp" {
   type    = bool
   default = false
+}
+
+variable "enable_config_drive" {
+  type    = bool
+  default = true
 }
 
 variable "dns_nameservers" {

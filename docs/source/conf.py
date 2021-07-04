@@ -12,8 +12,8 @@ extensions = [
 source_suffix = '.rst'
 master_doc = 'index'
 project = u'OSISM Testbed'
-copyright = u'2019-2020, Betacloud Solutions GmbH'
-author = u'Betacloud Solutions GmbH'
+copyright = u'2019-2021, OSISM GmbH'
+author = u'OSISM GmbH'
 version = u''
 release = u''
 language = 'en'
@@ -27,7 +27,7 @@ html_show_copyright = True
 htmlhelp_basename = 'documentation'
 html_theme_options = {
     'display_version': False,
-    'canonical_url': 'https://docs.osism.de/testbed/',
+    'canonical_url': 'https://docs.osism.tech/testbed/',
     'style_external_links': True,
     'logo_only': True,
     'prev_next_buttons_location': None

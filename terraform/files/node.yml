@@ -20,6 +20,13 @@
       - name: "{{ ansible_distribution_release }}-updates"
         repository: "deb [arch=amd64] http://de.archive.ubuntu.com/ubuntu/ {{ ansible_distribution_release }}-updates main restricted universe multiverse"
 
+    # resolvconf
+    resolvconf_nameserver:
+      - 8.8.8.8
+      - 9.9.9.9
+    resolvconf_search: osism.test
+    resolvconf_dnssec: false
+
   collections:
     - osism.commons
     - osism.services
@@ -70,7 +77,6 @@
     - role: packages
     - role: sysctl
     - role: services
-    - role: facts
     - role: motd
     - role: hddtemp
     - role: rng
@@ -88,7 +94,7 @@
     docker_configure_storage_driver: true
     docker_storage_driver: overlay2
     docker_user: dragon
-    docker_version: "5:20.10.0"
+    docker_version: "5:20.10.6"
 
   collections:
     - osism.services
@@ -109,3 +115,19 @@
 
   roles:
     - role: docker_compose
+
+# NOTE: The 3rd part is for roles which are based on Docker, for example.
+
+- name: Bootstrap node - pt. 3
+  hosts: localhost
+  connection: local
+  gather_facts: true
+
+  vars:
+    ansible_python_interpreter: /usr/bin/python3
+
+  collections:
+    - osism.commons
+
+  roles:
+    - role: facts

@@ -1,8 +1,10 @@
 ---
+node_id: 5
+
 ##########################################################
 # ansible
 
-ansible_host: "{{ '192.168.16.0/20' | ipaddr('net') | ipaddr('5') | ipaddr('address') }}"
+ansible_host: "{{ '192.168.16.0/20' | ipaddr('net') | ipaddr(5) | ipaddr('address') }}"
 
 ##########################################################
 # netbox
@@ -13,10 +15,10 @@ netbox_inventory_status: Active
 # generic
 
 console_interface: "{{ ansible_local.testbed_network_devices.management }}"
-management_interface: "{{ ansible_local.testbed_network_devices.internal }}"
+management_interface: "{{ ansible_local.testbed_network_devices.management }}"
 
-internal_address: "{{ '192.168.32.0/20' | ipaddr('net') | ipaddr('5') | ipaddr('address') }}"
-fluentd_host: "{{ '192.168.32.0/20' | ipaddr('net') | ipaddr('5') | ipaddr('address') }}"
+internal_address: "{{ '192.168.16.0/20' | ipaddr('net') | ipaddr(5) | ipaddr('address') }}"
+fluentd_host: "{{ '192.168.16.0/20' | ipaddr('net') | ipaddr(5) | ipaddr('address') }}"
 
 ##########################################################
 # cockpit
@@ -26,6 +28,11 @@ cockpit_host: "{{ hostvars[inventory_hostname]['ansible_' + console_interface]['
 cockpit_ssh_interface: "{{ ansible_local.testbed_network_devices.management }}"
 
 ##########################################################
+# docker
+
+docker_allow_restart: false
+
+##########################################################
 # netdata
 
 netdata_host_type: server
@@ -33,53 +40,22 @@ netdata_host_type: server
 ##########################################################
 # network
 
-network_interfaces:
-  - device: "{{ ansible_local.testbed_network_devices.management }}"
-    auto: true
-    family: inet
-    method: static
-    address: "{{ '192.168.16.0/20' | ipaddr('net') | ipaddr('5') | ipaddr('address') }}"
-    netmask: 255.255.240.0
-    gateway: "{{ '192.168.16.0/20' | ipaddr('net') | ipaddr('1') | ipaddr('address') }}"
-    mtu: 1450
-    up:
-      - "iptables -A FORWARD -i {{ ansible_local.testbed_network_devices.management }} -j ACCEPT"
-      - "iptables -A FORWARD -o {{ ansible_local.testbed_network_devices.management }} -j ACCEPT"
-      - "iptables -t nat -A POSTROUTING -o {{ ansible_local.testbed_network_devices.management }} -j MASQUERADE"
-
-  - device: "{{ ansible_local.testbed_network_devices.internal }}"
-    auto: true
-    family: inet
-    method: static
-    address: "{{ '192.168.32.0/20' | ipaddr('net') | ipaddr('5') | ipaddr('address') }}"
-    netmask: 255.255.240.0
-    mtu: 1450
-
-  - device: "{{ ansible_local.testbed_network_devices.external }}"
-    auto: true
-    family: inet
-    method: static
-    address: "{{ '192.168.96.0/20' | ipaddr('net') | ipaddr('5') | ipaddr('address') }}"
-    netmask: 255.255.240.0
-    mtu: 1450
-
-  - device: "{{ ansible_local.testbed_network_devices.provider }}"
-    auto: true
-    family: inet
-    method: static
-    address: "{{ '192.168.112.0/20' | ipaddr('net') | ipaddr('5') | ipaddr('address') }}"
-    netmask: 255.255.240.0
-    mtu: 1450
-
-  - device: "{{ ansible_local.testbed_network_devices.storage_frontend }}"
-    auto: true
-    family: inet
-    method: static
-    address: "{{ '192.168.64.0/20' | ipaddr('net') | ipaddr('5') | ipaddr('address') }}"
-    netmask: 255.255.240.0
-    mtu: 1450
+network_type: netplan
+network_ethernets:
+  "{{ ansible_local.testbed_network_devices.management }}":
+    addresses:
+      - "{{ '192.168.16.0/20' | ipaddr('net') | ipaddr(node_id) | ipaddr('address') }}/20"
+      - "{{ '192.168.64.0/20' | ipaddr('net') | ipaddr(node_id) | ipaddr('address') }}/20"
+      - "{{ '192.168.96.0/20' | ipaddr('net') | ipaddr(node_id) | ipaddr('address') }}/20"
+    gateway4: "{{ '192.168.16.0/20' | ipaddr('net') | ipaddr('1') | ipaddr('address') }}"
+    mtu: "{{ testbed_mtu_manager }}"
+network_dispatcher_scripts:
+  - src: /opt/configuration/network/vxlan.sh
+    dest: routable.d/vxlan.sh
+  - src: /opt/configuration/network/iptables.sh
+    dest: routable.d/iptables.sh
 
 ##########################################################
 # kolla
 
-network_interface: "{{ ansible_local.testbed_network_devices.internal }}"
+network_interface: "{{ ansible_local.testbed_network_devices.management }}"
